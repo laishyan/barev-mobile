@@ -1,0 +1,7 @@
+{
+  "name": "barev-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node server.mjs", "start": "node server.mjs", "check": "node --check app.js && node --check views.js && node --check journey.js && node --check creator.js && node --check rooms.js && node --check passport.js && node --check onboarding.js && node --check companion.js && node --check city.js && node --check server.mjs" }
+}

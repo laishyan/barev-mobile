@@ -1,0 +1,39 @@
+/* Anoush's 3D character stage, in the map's cream/apricot/sage palette. */
+.guide-studio-screen { background: linear-gradient(180deg,#d3f1e7,#fffbed 70%) !important; padding-top: 14px; }
+.guide-studio-screen > .screen-header { margin-top: 4px; margin-bottom: 18px; padding-inline: 22px; }
+.guide-studio-screen .screen-header .eyebrow { color: #78917d; font-size: 9px; letter-spacing: .14em; }
+.guide-studio-screen .screen-header h1 { color: #355f5a; font-size: 33px; font-weight: 800; }
+.guide-studio-screen .screen-header h1 em { color: #e47762; }
+.guide-studio-screen .screen-header p { color: #617e6d; font-size: 12px; max-width: 330px; }
+.guide-hero.studio-character-stage { height: 414px; margin: 0 12px; border: 2px solid #fffdf4; border-radius: 28px; background: radial-gradient(ellipse at 50% 35%,#fffbee 0%,#ffe9bd 44%,#dceac6 100%); box-shadow: 0 7px 0 #a1c5a526,0 14px 28px #7d98691a; isolation: isolate; }
+.studio-character-stage:before { content: ''; position: absolute; width: 286px; height: 286px; top: 49px; left: 50%; transform: translateX(-50%); border: 1px solid #fff8dd; border-radius: 50%; background: #fff7d94d; }
+.studio-character-stage .character-halo { position: absolute; width: 225px; height: 225px; border: 1px solid #fff9e9; border-radius: 50%; top: 76px; left: 50%; transform: translateX(-50%); }
+.anoush-3d { width: 320px; max-width: 100%; height: 405px; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); object-fit: contain; object-position: center bottom; filter: drop-shadow(0 9px 12px #9875501c); }
+.studio-letter { position: absolute; z-index: -1; font-family: 'Noto Sans Armenian',sans-serif; font-size: 32px; font-weight: 800; color: #d6a46c; text-shadow: 0 2px #fff5d680; }
+.studio-letter.letter-a { top: 35px; left: 25px; transform: rotate(-12deg); }
+.studio-letter.letter-b { top: 23px; right: 49px; transform: rotate(14deg); color: #df937f; }
+.studio-letter.letter-c { top: 133px; right: 24px; transform: rotate(14deg); color: #90b38b; font-size: 26px; }
+.studio-stage-sparkle { position: absolute; top: 124px; left: 27px; color: #fffaf1; font-size: 31px; }
+.studio-character-stage .guide-intro { top: auto; bottom: 25px; right: 12px; width: 185px; padding: 12px; background: #fffbedf2; border-color: #fffef5; box-shadow: 0 4px 0 #caa97826,0 8px 24px #7b69421c; }
+.studio-character-stage .guide-intro:before { content: ''; width: 12px; height: 12px; border-radius: 3px; background: #fffbed; transform: rotate(45deg); position: absolute; left: -7px; top: 24px; }
+.studio-character-stage .guide-intro > span { color: #6e9470; font-size: 8px; letter-spacing: .09em; }
+.studio-character-stage .guide-intro > span i { background: #91b67e; box-shadow: 0 0 0 3px #91b67e24; }
+.studio-character-stage .guide-intro .armenian { color: #355f5a; font-size: 14px; font-weight: 700; line-height: 1.7; }
+.studio-character-stage .guide-intro p { color: #61785f; font-size: 11px; line-height: 1.5; margin: 4px 0 8px; }
+.studio-character-stage .guide-listen { background: #789f68; color: #fffef5; border-radius: 12px; box-shadow: 0 3px 0 #759e662f; font-size: 11px; padding: 0 11px; min-height: 44px; }
+.studio-character-stage .scroll-cue { display: none; }
+.guide-settings { background: linear-gradient(#fffbed,#f1f6e6); padding-top: 28px; margin-top: 12px; }
+.settings-heading span { color: #bf9464; font-size: 9px; }
+.settings-heading h2 { color: #355f5a; font-weight: 700; font-size: 22px; }
+.settings-heading p { color: #6e856f; font-size: 11px; }
+.guide-settings .section-label span { color: #6b856d; }
+.guide-settings .register-picker { background: #fffdf6; border-color: white; box-shadow: 0 6px 22px #74936b12; }
+.guide-settings .register-option.selected { background: #fff0ce; border-color: #efd59e; }
+.guide-settings .register-option.selected .register-icon { background: #f4c481; color: #91653f; }
+.guide-settings .register-option.selected svg { color: #c49b60; }
+.guide-settings .dialect-toggle { background: #e3eddb; }
+.guide-settings .studio-cta { background: linear-gradient(110deg,#e69a78,#f3c181); box-shadow: 0 5px 0 #d3a07833; }
+.phone:has(.guide-studio-screen) .bottom-nav { background: #fffbedf5; border: 2px solid white; box-shadow: 0 8px 28px #6c866524; }
+.phone:has(.guide-studio-screen) .nav-item { color: #85a291; }
+.phone:has(.guide-studio-screen) .nav-item.active { color: #de8b60; }
+@media(max-width:350px) { .guide-hero.studio-character-stage { height: 380px; margin-inline: 8px; }.anoush-3d { width: 290px; height: 375px; }.studio-character-stage .guide-intro { width: 171px; right: 9px; }.studio-letter.letter-a { left: 15px; } }

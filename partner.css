@@ -1,0 +1,39 @@
+/* The same layered 3D partner is used in the dressing room, studio and lessons. */
+.companion-art{width:240px;height:350px;position:relative;display:block;flex-shrink:0;isolation:isolate}
+.partner-figure{width:100%;height:100%;position:relative;animation:partner-breathe 5s ease-in-out infinite;transform-origin:50% 90%;filter:drop-shadow(0 8px 8px #87684418)}
+.partner-body,.partner-head{position:absolute;object-fit:contain;pointer-events:none;width:100%}
+.partner-body{height:68%;bottom:0;left:0;object-position:center top}
+.partner-body.body-coral,.partner-body.body-sage{height:75%}
+.partner-head{height:45%;top:3%;left:0;object-position:center bottom;z-index:2}
+.partner-head-accessories{transform:translate(16.7px,9px) scale(.8333)}
+.partner-extras{position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible;filter:drop-shadow(0 2px 1px #86694428)}
+.partner-cap>path:first-child{fill:#82a373;stroke:#698e62;stroke-width:1}
+.partner-cap>path:nth-child(2){fill:#7d9d6d;stroke:#648958;stroke-width:1}
+.partner-headphones{transform:translate(15px,0) scaleX(.85)}
+.partner-curl .partner-glasses{transform:translateY(7px)}
+.partner-scarf{transform:translateY(-37px)}
+.companion-stage{padding-top:17px;padding-bottom:15px}
+.companion-stage-label{font-size:9px;color:#8c7757;z-index:4}.companion-stage-caption{font-size:10px;color:#706c50;z-index:4;text-align:center}
+.companion-intro{font-size:12px;color:#617f65}
+.partner-meet{width:100%;min-height:48px;background:#82a67b;color:#fffdf0;border-radius:16px;margin-top:17px;font-size:12px;font-weight:800}
+.partner-identity{text-align:center;font-size:11px;line-height:1.7;color:#698364;margin-top:13px}
+.welcome-partner{position:absolute;left:50%;bottom:-15px;transform:translateX(-50%);width:230px;height:330px}.welcome-partner .companion-art{width:100%;height:100%}
+.assessment-partner{width:55px;height:77px;flex-shrink:0}.assessment-partner .companion-art{width:55px;height:77px}
+.wardrobe-trial{font-size:11px;line-height:1.7;color:#698364;margin-top:7px}
+.wardrobe-category{font-size:13px;font-weight:800;color:#657e60;margin:22px 0 5px}
+.wardrobe-item p{font-size:11px;color:#647b5d}.wardrobe-item strong{font-size:13px}.wardrobe-item button{font-size:11px;color:#85633e}.wardrobe-item button.equipped{color:#527a45}
+.wardrobe-item .wardrobe-buy{margin-top:8px;background:transparent;border:1px solid #e7d5b8;font-size:10px;color:#8b795c}.wardrobe-item .wardrobe-buy:disabled{opacity:.55}.wardrobe-owned{font-size:9px;color:#648954;margin-top:10px}
+.companion-mini-art{width:52px;height:74px}.companion-mini-art .companion-art{width:52px;height:74px}.companion-mini strong{font-size:12px;color:#446b4c}.companion-mini small{color:#627b55;font-size:9px}
+.studio-partner{position:absolute;width:265px;height:390px;left:50%;bottom:0;transform:translateX(-50%)}
+.studio-partner .companion-art{width:100%;height:100%}
+.studio-character-stage .guide-intro{bottom:14px;width:192px;z-index:5}
+.avatar-stage>.companion-art{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:240px;height:330px}
+.coach-screen .avatar-stage{height:340px;min-height:340px;overflow:hidden;background:radial-gradient(ellipse at 50% 35%,#fff8df,#ffedc9 55%,#e2edce)}
+.coach-screen .phonetics-window{top:auto;bottom:16px;right:12px;background:#fffbed;border:2px solid white;color:#355f5a;box-shadow:0 5px 20px #8a8c6822;width:170px}
+.coach-screen .phonetic-top strong{color:#355f5a}.coach-screen .phonetic-top small,.coach-screen .phonetics-window p{color:#698064}
+.coach-screen .record-button{background:linear-gradient(135deg,#e99776,#f1bd83);border-color:#fffbed;color:#fffbed}
+.partner-talking{animation:partner-talk .7s ease-in-out infinite}
+@keyframes partner-breathe{0%,100%{transform:translateY(0) rotate(-.3deg)}50%{transform:translateY(-3px) rotate(.3deg)}}
+@keyframes partner-talk{0%,100%{transform:translateY(0) rotate(-.6deg)}50%{transform:translateY(-2px) rotate(.6deg)}}
+@media(prefers-reduced-motion:reduce){.partner-figure{animation:none}}
+.gentle-motion .partner-figure{animation:none}
