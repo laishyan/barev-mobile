@@ -1,9 +1,11 @@
-import { routes, adventures, icon, quests, studio, create, barev, profile, lesson } from './views.js';
+import { routes, adventures, icon, quests, lesson } from './views.js';
 import { places, placeSheet } from './journey.js';
 import { creator, storyDemo, storyTemplates } from './creator.js';
 import { roomDirectory, voiceRoom } from './rooms.js';
 import { passport, stampInfo } from './passport.js';
-import { welcome, signup, assessment, verification } from './onboarding.js';
+import { welcome, signin, signup, assessment, verification, purpose, goals, knowledgeCards } from './onboarding.js';
+import { conversation, rewards, topics, getTopic, topicPassed } from './practice.js';
+import { settings } from './settings.js';
 import { companion, companionMini, readWallet, saveWallet, equipItem, wardrobeItems, awardCoins, purchaseItem, rewardDay } from './companion.js';
 import { yerevan, cascadeCafe, cafePhrase } from './city.js';
 
@@ -17,30 +19,33 @@ const state = {
   register: [0,1,2].includes(saved.register) ? saved.register : 2,
   dialect: [0,1].includes(saved.dialect) ? saved.dialect : 0,
   interceptor: typeof saved.interceptor === 'boolean' ? saved.interceptor : true,
-  prompt: saved.creatorVersion === 1 && typeof saved.prompt === 'string' ? saved.prompt.slice(0,240) : defaultPrompt,
-  creationFormat: ['listening','video','fairytale'].includes(saved.creationFormat) ? saved.creationFormat : 'fairytale',
+  prompt: saved.creatorVersion === 1 && typeof saved.prompt === 'string' ? saved.prompt.slice(0,2000) : defaultPrompt,
+  creationFormat: 'video',
   profileName: typeof saved.profileName === 'string' && saved.profileName.trim() ? saved.profileName.trim().slice(0,24) : 'Tigran',
   profileAvatar: ['apricot','sun','flower'].includes(saved.profileAvatar) ? saved.profileAvatar : 'apricot',
   dailyGoal: [5,10,15].includes(saved.dailyGoal) ? saved.dailyGoal : 10,
   savedPhrases: Array.isArray(saved.savedPhrases) ? [...new Set(saved.savedPhrases.filter(n=>[0,1,2].includes(n)))] : [0,1],
   gentleMotion: saved.gentleMotion === true, profileEditing: false,
-  onboardingRole: 'learner', onboardingName: typeof saved.profileName === 'string' ? saved.profileName.slice(0,24) : 'Tigran',
-  onboardingCompleted: saved.onboardingCompleted === true, profileRole: saved.profileRole === 'mentor' ? 'mentor' : 'learner',
-  assessmentRunning: false, assessmentDone: false, assessmentSeconds: 10,
-  verificationMode: 'voice', verificationDone: false,
+  onboardingName: typeof saved.profileName === 'string' ? saved.profileName.slice(0,24) : 'Tigran',
+  onboardingCompleted: saved.onboardingCompleted === true, profileRole: 'learner',
+  registration:{surname:'',age:'',sex:'',email:'',partner:''},
+  knowledgeIndex:0, knowledgeAnswers:[],
+  learningGoal:['everyday','confidence','situations','personal'].includes(saved.learningGoal)?saved.learningGoal:'confidence',
+  personalGoal:typeof saved.personalGoal==='string'?saved.personalGoal.slice(0,120):'',
+  voiceStyle:saved.voiceStyle==='bright'?'bright':'gentle', voiceRate:saved.voiceRate===.8?.8:1,
+  completedTopics:Array.isArray(saved.completedTopics)?saved.completedTopics.filter(id=>topics.some(t=>t.id===id)):[],
+  topic:'cafe', roomTopic:'cafe', conversationStep:0, conversationDraft:'', conversationFeedback:false, conversationDone:false, conversationReward:false,
   wallet: readWallet(), dailyChallengeOpen: false, inviteOpen: false,
   cafeStep:'listen', cafeAnswer:null, cafePracticed:false, cafeNewReward:false,
   muted: true, hand: false, activeQuest: null,
   roomChatOpen: false, roomHint: false, roomDraft: '',
   roomMessages: [
-    {author:'Ani',text:'Բարև՛։ Welcome! I’m Ani, your volunteer peer from Gyumri. Let’s try a little Armenian together.'},
+    {author:'Barev AI',text:'Բարև՛։ Welcome to this topic room. Try a little Armenian together. This host message is a prepared demo.'},
     {author:'Mark',text:'Barev! Excited to practice with everyone 🌼'}
   ]
 };
-const views = { yerevan, cafe:cascadeCafe, companion, welcome, signup, assessment, verification, quests, studio, create: creator, story: storyDemo, barev: roomDirectory, room: voiceRoom, profile: passport, lesson };
-const onboardingRoutes = ['welcome','signup','assessment','verification'];
-let assessmentTimer = null;
-let assessmentDeadline = 0;
+const views = { conversation, rewards, settings, signin, purpose, goals, yerevan, cafe:cascadeCafe, companion, welcome, signup, assessment, verification, quests, create: creator, story: storyDemo, barev: roomDirectory, room: voiceRoom, profile: passport, lesson };
+const onboardingRoutes = ['welcome','signin','signup','assessment','verification','purpose','goals'];
 let current = 'quests';
 let selectedPlace = null;
 let expandedPlace = false;
@@ -51,26 +56,6 @@ function changeWallet(message,focusSelector) {
   if(message) document.querySelector('#announcement').textContent=message;
 }
 const lessonRewardKey = () => 'lesson:'+(state.activeQuest?.id||'cascade-cafe');
-function stopAssessment() {
-  clearInterval(assessmentTimer); assessmentTimer = null;
-  state.assessmentRunning = false;
-}
-function startAssessment() {
-  stopAssessment();
-  state.assessmentDone = false; state.assessmentSeconds = 10; state.assessmentRunning = true;
-  assessmentDeadline = performance.now() + 10000;
-  render();
-  const tick = () => {
-    if (current !== 'assessment') { stopAssessment(); return; }
-    state.assessmentSeconds = Math.max(0,Math.ceil((assessmentDeadline-performance.now())/1000));
-    if (!state.assessmentSeconds) {
-      stopAssessment(); state.assessmentDone = true; render();
-      document.querySelector('#announcement').textContent = 'Speaking demo complete. Sample starting point: Beginner.';
-    } else container.querySelector('[data-assessment-seconds]').textContent = state.assessmentSeconds;
-  };
-  assessmentTimer = setInterval(tick,100);
-}
-
 function keepPlaceVisible() {
   const sheet = container.querySelector('#place-sheet');
   const marker = container.querySelector(`[data-place="${selectedPlace?.id}"]`);
@@ -119,7 +104,7 @@ function selectPlaceTab(id) {
 }
 
 function persist() {
-  try { localStorage.setItem('barev-preferences', JSON.stringify({ register: state.register, dialect: state.dialect, interceptor: state.interceptor, prompt: state.prompt, creationFormat: state.creationFormat, creatorVersion: 1, profileName: state.profileName, profileAvatar: state.profileAvatar, dailyGoal: state.dailyGoal, savedPhrases: state.savedPhrases, gentleMotion: state.gentleMotion, onboardingCompleted: state.onboardingCompleted, profileRole: state.profileRole })); } catch { /* Keep preferences in memory if persistence is blocked. */ }
+  try { localStorage.setItem('barev-preferences', JSON.stringify({ register: state.register, dialect: state.dialect, interceptor: state.interceptor, prompt: state.prompt, creationFormat: state.creationFormat, creatorVersion: 1, profileName: state.profileName, profileAvatar: state.profileAvatar, dailyGoal: state.dailyGoal, savedPhrases: state.savedPhrases, gentleMotion: state.gentleMotion, onboardingCompleted: state.onboardingCompleted, profileRole: 'learner', learningGoal:state.learningGoal, personalGoal:state.personalGoal, voiceStyle:state.voiceStyle, voiceRate:state.voiceRate, completedTopics:state.completedTopics })); } catch { /* Keep preferences in memory if persistence is blocked. */ }
 }
 function notice(title, message) {
   dialog.querySelector('h2').textContent = title;
@@ -129,7 +114,7 @@ function notice(title, message) {
 function updateEditor() {
   const textarea = container.querySelector('textarea');
   if (!textarea) return;
-  container.querySelector('.character-count').textContent = `${textarea.value.length} / 240`;
+  container.querySelector('.character-count').textContent = `${textarea.value.length} / 2000`;
   container.querySelector('[data-action="build"]').disabled = !textarea.value.trim();
   container.querySelectorAll('[data-template]').forEach(button => button.setAttribute('aria-pressed', String(storyTemplates[Number(button.dataset.template)].prompt === textarea.value)));
 }
@@ -140,8 +125,8 @@ function render(focus = false) {
   const placeExplorer = container.querySelector('#place-sheet');
   if (placeExplorer) container.append(placeExplorer);
   container.scrollTop = 0;
-  nav.hidden = current === 'cafe' || current === 'lesson' || current === 'room' || onboardingRoutes.includes(current);
-  const navRoute = current === 'yerevan' ? 'quests' : current === 'story' ? 'create' : current === 'room' ? 'barev' : current === 'companion' ? 'profile' : current;
+  nav.hidden = current === 'conversation' || current === 'cafe' || current === 'lesson' || current === 'room' || onboardingRoutes.includes(current);
+  const navRoute = current === 'lesson' ? 'quests' : current === 'rewards' ? 'quests' : current === 'settings' ? 'profile' : current === 'yerevan' ? 'quests' : current === 'story' ? 'create' : current === 'room' ? 'barev' : current === 'companion' ? 'profile' : current;
   nav.innerHTML = routes.map(([route,label,symbol])=>`<button class="button nav-item ${navRoute===route?'active':''}" data-route="${route}" ${navRoute===route?'aria-current="page"':''}>${icon(symbol,21)}<span>${label}</span></button>`).join('');
   if (current === 'create') {
     container.querySelector('textarea').value = state.prompt;
@@ -152,6 +137,8 @@ function render(focus = false) {
     video.addEventListener('loadedmetadata',()=>{
       if (Number.isFinite(video.duration)) container.querySelector('[data-video-duration]').textContent = `${Math.floor(video.duration/60)}:${String(Math.floor(video.duration%60)).padStart(2,'0')}`;
     },{once:true});
+    const previewCaptions=[['Շունն ու կատուն','Shunn u katun'],['Շուն','Shun'],['Կատու','Katu']];
+    video.addEventListener('timeupdate',()=>{ const line=previewCaptions[Math.floor(video.currentTime/7)%previewCaptions.length]; container.querySelector('[data-caption-hy]').textContent=line[0]; container.querySelector('[data-caption-latin]').textContent=line[1]; });
     video.addEventListener('error',()=>{
       document.querySelector('#announcement').textContent = 'The demo video could not load. Please try refreshing the page.';
     });
@@ -167,10 +154,10 @@ function render(focus = false) {
   }
   if (current === 'profile') {
     container.querySelector('.passport-identity').insertAdjacentHTML('afterend',companionMini(state));
-    container.querySelector('.passport-preferences').insertAdjacentHTML('beforeend','<button class="button welcome-explore" data-route="welcome">Replay the welcome demo ↗</button>');
-    if (state.onboardingCompleted && state.profileRole === 'mentor') container.querySelector('.passport-identity').insertAdjacentHTML('beforeend','<p class="onboarding-complete-note">Volunteer mentor applicant · demo, review not performed</p>');
+
+
   }
-  if (current === 'studio') container.querySelector('.guide-settings').insertAdjacentHTML('afterbegin',companionMini(state));
+
   if (current === 'quests') {
     const coins=container.querySelector('.journey-gems');
     const button=document.createElement('button');
@@ -183,27 +170,48 @@ function render(focus = false) {
     container.querySelector('.screen').insertAdjacentHTML('beforeend',`<button class="button lesson-reward" data-action="complete-lesson" ${earned?'disabled':''}>${earned?'Lesson reward collected ✓':'Complete demo lesson · earn 30 coins'}</button><p class="demo-note lesson-reward-note">Self-marked practice · one reward per different demo lesson</p>`);
   }
   container.querySelector('.screen').scrollTop = focus ? 0 : scroll;
-  document.title = `Barev — ${current==='companion'?'Your companion':onboardingRoutes.includes(current)?({welcome:'Welcome',signup:'Sign Up',assessment:'A little Armenian',verification:'Welcome check'})[current]:current==='story'?'Your story':current==='room'?'Voice room':routes.find(([r])=>r===current)?.[1] || 'Speaking practice'}`;
+  document.title = `Barev — ${current==='companion'?'Your companion':onboardingRoutes.includes(current)?({welcome:'Welcome',signup:'Sign Up',assessment:'A little Armenian',verification:'Email preview'})[current]:current==='story'?'Your story':current==='room'?'Voice room':routes.find(([r])=>r===current)?.[1] || 'Speaking practice'}`;
+  if(['signin','purpose','goals','settings','conversation','rewards'].includes(current)) document.title='Barev — '+({signin:'Sign In',purpose:'Find your voice',goals:'Your goals',settings:'Settings',conversation:getTopic(state.topic).name,rewards:'Daily challenges'})[current];
   if(current==='yerevan'||current==='cafe') document.title='Barev — '+(current==='yerevan'?'Yerevan adventure':'Cascade café quest');
   if (focus) container.querySelector('h1')?.focus({ preventScroll:true });
 }
 function routeFromHash() {
   const [route, query] = location.hash.slice(1).split('?');
   const params = new URLSearchParams(query || '');
-  const next = Object.hasOwn(views, route) ? route : 'welcome';
-  if (next !== 'assessment') stopAssessment();
+  const next = route==='studio'?'settings':Object.hasOwn(views, route) ? route : 'welcome';
+  if(next==='conversation') {
+    const id=getTopic(params.get('topic')).id;
+    if(id!==state.topic||current!=='conversation') resetConversation(id);
+  }
+  if(next==='room') {
+    state.roomTopic=getTopic(params.get('topic')).id;
+  }
+  if(next==='assessment' && state.knowledgeIndex>=knowledgeCards.length) state.knowledgeIndex=0;
   current = next;
   if (current === 'lesson') state.activeQuest = places.find(place => place.id === params.get('place')) || null;
   selectedPlace = null;
   render(true);
   if (current === 'quests' && params.has('place')) openPlace(params.get('place'), params.get('expanded') === '1');
 }
+function resetConversation(id) {
+  state.topic=getTopic(id).id; state.conversationStep=0; state.conversationDraft=''; state.conversationFeedback=false; state.conversationDone=false; state.conversationReward=false;
+}
+function openConversation(id) {
+  resetConversation(id);
+  if(current==='conversation' && location.hash===`#conversation?topic=${state.topic}`) render(true);
+  else go(`conversation?topic=${state.topic}`);
+}
+function completeTopic(id) {
+  if(!state.completedTopics.includes(id)) state.completedTopics.push(id);
+  state.conversationReward=awardCoins(state.wallet,'topic:'+id,30,getTopic(id).name+' conversation');
+  saveWallet(state.wallet); persist();
+}
 function go(route) {
   if (current === route) return;
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   location.hash = route;
 }
-function speak(text, rate = 1) {
+function speak(text, rate = state.voiceRate) {
   if (!('speechSynthesis' in window)) {
     notice('Audio preview', 'This browser does not offer speech playback. The Armenian line and transliteration are available on screen.'); return;
   }
@@ -225,6 +233,21 @@ document.addEventListener('click', event => {
   const button = event.target.closest('button');
   if (!button) return;
   if (button.closest('#notice')) { dialog.close(); return; }
+  if (button.dataset.topic) { openConversation(button.dataset.topic); return; }
+  if (button.dataset.topicRoom) {
+    const id=getTopic(button.dataset.topicRoom).id;
+    state.roomTopic=id; state.muted=true; state.hand=false; state.roomChatOpen=false;
+    state.roomMessages=[{author:'Barev AI',text:'Բարև՛։ Welcome to '+getTopic(id).name+'. This is a prepared AI host preview.'},{author:'Mark',text:'Barev! Ready to practice together.'}];
+    go('room?topic='+id); return;
+  }
+  if (button.dataset.knowledge) {
+    state.knowledgeAnswers[state.knowledgeIndex]=button.dataset.knowledge==='yes';
+    if(state.knowledgeIndex<knowledgeCards.length-1) { state.knowledgeIndex++; render(true); }
+    else go('goals'); return;
+  }
+  if (button.dataset.learningGoal) { state.learningGoal=button.dataset.learningGoal; persist(); render(); return; }
+  if (button.dataset.voiceStyle) { state.voiceStyle=button.dataset.voiceStyle; persist(); render(); return; }
+  if (button.dataset.voiceRate) { state.voiceRate=Number(button.dataset.voiceRate); persist(); render(); return; }
   if (button.dataset.route) { go(button.dataset.route); return; }
   if (button.dataset.place) { openPlace(button.dataset.place); return; }
   if (button.dataset.cafeAnswer) {
@@ -242,15 +265,6 @@ document.addEventListener('click', event => {
     const id=button.dataset.equipItem;
     if(!equipItem(state.wallet,id)) return;
     changeWallet('Outfit updated.',`[data-equip-item="${id}"]`); return;
-  }
-  if (button.dataset.signupRole) {
-    state.onboardingName = container.querySelector('#signup-name').value;
-    state.onboardingRole = button.dataset.signupRole; render();
-    container.querySelector(`[data-signup-role="${state.onboardingRole}"]`).focus({preventScroll:true}); return;
-  }
-  if (button.dataset.verificationMode) {
-    state.verificationMode = button.dataset.verificationMode; state.verificationDone = false; render();
-    container.querySelector(`[data-verification-mode="${state.verificationMode}"]`).focus({preventScroll:true}); return;
   }
   if (button.dataset.stamp !== undefined) { notice(...stampInfo(Number(button.dataset.stamp))); return; }
   if (button.dataset.goal !== undefined) {
@@ -287,7 +301,7 @@ document.addEventListener('click', event => {
     container.querySelector('textarea').value = state.prompt; updateEditor(); return;
   }
   switch (button.dataset.action) {
-      case 'cascade-open': state.cafeStep='listen'; state.cafeAnswer=null; state.cafePracticed=false; state.cafeNewReward=false; go('cafe'); break;
+      case 'cascade-open': openConversation('cafe'); break;
       case 'cafe-audio': speak(cafePhrase,.8); break;
       case 'cafe-listen': state.cafeStep='listen'; render(true); break;
       case 'cafe-speak': if(state.cafeAnswer==='coffee') { state.cafeStep='speak'; render(true); container.querySelector('h2').focus({preventScroll:true}); } break;
@@ -297,7 +311,14 @@ document.addEventListener('click', event => {
         state.cafeNewReward=awardCoins(state.wallet,'lesson:cascade-cafe',30,'Cascade Café lesson');
         saveWallet(state.wallet); state.cafeStep='done'; render(true);
         document.querySelector('#announcement').textContent='Café practice complete.'; break;
-    case 'companion-lesson': state.activeQuest=null; go('lesson'); break;
+    case 'topic-audio': speak(getTopic(state.topic).steps[state.conversationStep][0]); break;
+    case 'use-topic-phrase': state.conversationDraft=getTopic(state.topic).steps[state.conversationStep][3]; render(); container.querySelector('#conversation-answer').focus(); break;
+    case 'conversation-next':
+      if(!state.conversationFeedback) break;
+      if(state.conversationStep===0) { state.conversationStep=1; state.conversationDraft=''; state.conversationFeedback=false; render(true); }
+      else { completeTopic(state.topic); state.conversationDone=true; render(true); }
+      break;
+    case 'companion-lesson': openConversation('cafe'); break;
     case 'complete-lesson':
       if(awardCoins(state.wallet,lessonRewardKey(),30,(state.activeQuest?.name||'Cascade Café')+' lesson')) changeWallet('Demo lesson complete. 30 coins added.');
       break;
@@ -309,20 +330,17 @@ document.addEventListener('click', event => {
     case 'claim-invite':
       if(awardCoins(state.wallet,'invite:demo-friend',50,'Sample friend joined')) { state.inviteOpen=false; changeWallet('Sample friend joined. 50 demo coins added.'); }
       break;
-    case 'onboarding-back': go(({welcome:'quests',signup:'welcome',assessment:'signup',verification:'assessment'})[current]); break;
-    case 'assessment-start': startAssessment(); break;
-    case 'assessment-skip': stopAssessment(); state.assessmentDone = true; go('verification'); break;
-    case 'assessment-next': go('verification'); break;
-    case 'preview-verification': state.verificationDone = true; render(); container.querySelector('[data-action="finish-signup"]').focus({preventScroll:true}); break;
+    case 'onboarding-back': go(({signin:'welcome',signup:'welcome',verification:'signup',purpose:'verification',assessment:'purpose',goals:'assessment'})[current]||'welcome'); break;
     case 'finish-signup':
-      state.profileName = state.onboardingName; state.profileRole = state.onboardingRole;
+      state.profileName = state.onboardingName; state.profileRole = 'learner';
+      state.wallet.name=(state.registration.partner.trim()||state.onboardingName).replace(/[<>&"']/g,'').slice(0,24)||'Ani'; saveWallet(state.wallet);
       state.onboardingCompleted = true; persist(); go('profile'); break;
     case 'edit-profile': state.profileEditing = true; render(); container.querySelector('#profile-name').focus(); break;
     case 'cancel-profile': state.profileEditing = false; render(); container.querySelector('[data-action="edit-profile"]').focus({preventScroll:true}); break;
     case 'gentle-motion':
       state.gentleMotion = !state.gentleMotion; persist(); render();
       container.querySelector('[data-action="gentle-motion"]').focus({preventScroll:true}); break;
-    case 'join-room': state.muted = true; state.hand = false; state.roomChatOpen = false; go('room'); break;
+    case 'join-room': if(topicPassed(state,state.roomTopic)) go('room?topic='+state.roomTopic); break;
     case 'leave-room': state.roomChatOpen = false; go('barev'); break;
     case 'room-chat':
       state.roomChatOpen = !state.roomChatOpen; render();
@@ -339,8 +357,8 @@ document.addEventListener('click', event => {
       state.roomHint = !state.roomHint;
       container.querySelector('.room-hint-answer').hidden = !state.roomHint;
       button.setAttribute('aria-expanded',String(state.roomHint)); break;
-    case 'quest': go('studio'); break;
-    case 'lesson': state.activeQuest = null; go('lesson'); break;
+    case 'quest': openConversation('cafe'); break;
+    case 'lesson': openConversation('cafe'); break;
     case 'close-place': closePlace(); break;
     case 'expand-place':
       expandedPlace = !expandedPlace;
@@ -348,9 +366,9 @@ document.addEventListener('click', event => {
       button.setAttribute('aria-expanded',String(expandedPlace));
       button.setAttribute('aria-label',`${expandedPlace?'Collapse':'Expand'} place details`);
       setTimeout(keepPlaceVisible,260); break;
-    case 'place-quest': state.activeQuest = selectedPlace; go(`lesson?place=${selectedPlace.id}`); break;
+    case 'place-quest': openConversation(selectedPlace.id==='sevan'?'travel':selectedPlace.id==='gyumri'?'shopping':selectedPlace.id==='dilijan'?'travel':'cafe'); break;
     case 'place-audio': speak(selectedPlace.phrase[0]); break;
-    case 'greeting': speak('Բարև՛, ես Անին եմ։'); break;
+    case 'greeting': speak('Բարև՛։ Ինչպե՞ս ես։'); break;
     case 'icebreaker': speak('Ի՞նչ երգեր ես լսում հիմա։'); break;
     case 'slow': speak(state.activeQuest?.phrase[0] || 'Մի հատ սառը սուրճ կբերե՞ք, խնդրում եմ։', .8); break;
     case 'interceptor':
@@ -374,20 +392,40 @@ document.addEventListener('click', event => {
   }
 });
 container.addEventListener('input', event => {
+  event.target.setCustomValidity?.('');
+  if (event.target.id === 'personal-goal') { state.personalGoal=event.target.value.slice(0,120); persist(); return; }
+  if (event.target.id === 'conversation-answer') { state.conversationDraft=event.target.value; state.conversationFeedback=false; container.querySelector('.conversation-feedback')?.remove(); return; }
   if (event.target.id === 'signup-name') { state.onboardingName = event.target.value; event.target.setCustomValidity(''); return; }
+  const field=({ 'signup-surname':'surname','signup-age':'age','signup-sex':'sex','signup-email':'email','signup-partner':'partner' })[event.target.id];
+  if(field) { state.registration[field]=event.target.value; return; }
   if (event.target.id === 'profile-name') { event.target.setCustomValidity(''); return; }
   if (event.target.id === 'room-message') { state.roomDraft = event.target.value; return; }
   if (!event.target.matches('textarea')) return;
   state.prompt = event.target.value; persist(); updateEditor();
 });
 container.addEventListener('submit',event=>{
+  if(event.target.matches('.signin-demo-form')) { event.preventDefault(); notice('Sign In preview','This form shows the design only. Authentication is not connected and nothing was submitted.'); return; }
+  if(event.target.matches('.partner-name-form')) {
+    event.preventDefault(); const input=event.target.querySelector('input');
+    const name=input.value.replace(/[<>&"']/g,'').trim();
+    if(!name) { input.setCustomValidity('Please enter a name.'); input.reportValidity(); return; }
+    state.wallet.name=name.slice(0,24); saveWallet(state.wallet); render(); return;
+  }
+  if(event.target.matches('.conversation-form')) {
+    event.preventDefault(); const input=event.target.querySelector('textarea');
+    if(!input.value.trim()) { input.setCustomValidity('Try a phrase or use the helpful example.'); input.reportValidity(); return; }
+    state.conversationDraft=input.value.trim(); state.conversationFeedback=true; render();
+    container.querySelector('.conversation-feedback').focus(); container.querySelector('.conversation-feedback').scrollIntoView({block:'center',behavior:state.gentleMotion?'instant':'smooth'}); return;
+  }
   if (event.target.matches('.signup-demo-form')) {
     event.preventDefault();
     const name = event.target.querySelector('#signup-name');
     if (!name.value.trim()) { name.setCustomValidity('Please enter a name for the demo.'); name.reportValidity(); return; }
     state.onboardingName = name.value.trim().slice(0,24);
-    stopAssessment(); state.assessmentDone = false; state.assessmentSeconds = 10;
-    state.verificationDone = false; go('assessment'); return;
+    for(const key of ['surname','age','sex','email','partner']) state.registration[key]=event.target.elements[key].value.trim();
+    const surname=event.target.elements.surname;
+    if(!surname.value.trim()) { surname.setCustomValidity('Please enter your surname.'); surname.reportValidity(); return; }
+    state.knowledgeIndex=0; state.knowledgeAnswers=[]; go('verification'); return;
   }
   if (event.target.matches('.passport-editor')) {
     event.preventDefault();
@@ -408,6 +446,7 @@ container.addEventListener('submit',event=>{
   state.roomDraft = ''; render();
   container.querySelector('#room-message').focus({preventScroll:true});
 });
+container.addEventListener('change',event=>{ if(event.target.id==='signup-sex') state.registration.sex=event.target.value; });
 window.addEventListener('hashchange',routeFromHash);
 document.addEventListener('keydown',event=>{
   if (event.key === 'Escape' && current === 'room' && state.roomChatOpen) {

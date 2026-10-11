@@ -1,6 +1,6 @@
 import { icon } from './views.js';
 export const wardrobeItems = [
-  {id:'tidy',name:'Soft waves',category:'hair',price:50,symbol:'〰️',description:'Soft chestnut waves, swept and ready.'},
+  {id:'tidy',name:'Soft waves',category:'hair',price:0,symbol:'〰️',description:'Soft chestnut waves, swept and ready.'},
   {id:'curls',name:'Playful curls',category:'hair',price:70,symbol:'🌀',description:'Bouncy curls with a loose bun for her.'},
   {id:'basic',name:'Cozy cream',category:'clothes',price:0,symbol:'🤍',description:'A soft knit with little sage patches.'},
   {id:'jacket',name:'Coral varsity',category:'clothes',price:160,symbol:'🧥',description:'Cream sleeves, coral warmth, denim.'},
@@ -13,7 +13,7 @@ export const wardrobeItems = [
 ];
 export function equipItem(wallet,id) {
   const item=wardrobeItems.find(item=>item.id===id);
-  if(!item) return false;
+  if(!item || (item.price>0 && !wallet.owned.includes(id))) return false;
   if(wallet.equipped.includes(id)) wallet.equipped=wallet.equipped.filter(value=>value!==id);
   else {
     if(item.category!=='accessories') wallet.equipped=wallet.equipped.filter(value=>wardrobeItems.find(entry=>entry.id===value)?.category!==item.category);
@@ -21,19 +21,22 @@ export function equipItem(wallet,id) {
   }
   return true;
 }
-export const partnerName = () => 'Ani';
-export const initialWallet = () => ({coins:0,gender:'female',age:'teen',owned:[],equipped:[],earned:[],history:[]});
+export const partnerName = wallet => wallet?.name || 'Ani';
+export const initialWallet = () => ({coins:0,gender:'female',age:'teen',name:'Ani',owned:['basic','tidy'],equipped:['basic','tidy'],earned:[],history:[]});
 export function readWallet() {
   const wallet = initialWallet();
   try {
     const saved = JSON.parse(localStorage.getItem('barev-companion')||'{}');
     if (Number.isSafeInteger(saved.coins)&&saved.coins>=0) wallet.coins=saved.coins;
+    if(typeof saved.name==='string' && saved.name.trim()) wallet.name=saved.name.replace(/[<>&"']/g,'').trim().slice(0,24)||'Ani';
     // The presentation has one teenage girl speaking partner.
 
     const ids=wardrobeItems.map(item=>item.id);
-    if(Array.isArray(saved.owned)) wallet.owned=[...new Set(saved.owned.filter(id=>ids.includes(id)))];
+    if(Array.isArray(saved.owned)) wallet.owned=[...new Set(['basic','tidy',...saved.owned.filter(id=>ids.includes(id))])];
     // Keep the chosen hair and clothes, but begin each app visit without old accessories.
-    if(Array.isArray(saved.equipped)) wallet.equipped=[...new Set(saved.equipped.filter(id=>wardrobeItems.some(item=>item.id===id&&item.category!=='accessories')))];
+    if(Array.isArray(saved.equipped)) wallet.equipped=[...new Set(saved.equipped.filter(id=>wardrobeItems.some(item=>item.id===id&&item.category!=='accessories'&&wallet.owned.includes(id))))];
+    if(!wallet.equipped.some(id=>wardrobeItems.find(i=>i.id===id)?.category==='hair')) wallet.equipped.push('tidy');
+    if(!wallet.equipped.some(id=>wardrobeItems.find(i=>i.id===id)?.category==='clothes')) wallet.equipped.push('basic');
     if(Array.isArray(saved.earned)) wallet.earned=saved.earned.filter(id=>typeof id==='string');
     if(Array.isArray(saved.history)) wallet.history=saved.history.filter(item=>typeof item.label==='string'&&Number.isSafeInteger(item.amount)).slice(0,12);
   } catch { /* Local demo starts fresh if saved data is unavailable. */ }
@@ -71,6 +74,6 @@ export function companionMini(state) {
   return `<button class="button companion-mini" data-route="companion"><span class="companion-mini-art">${companionArt(state.wallet)}</span><span><strong>Your speaking partner</strong><small>Your look, your voice companion.</small></span><span class="mini-coins">🪙 ${state.wallet.coins}<small>Wardrobe ↗</small></span></button>`;
 }
 export function companion(state) {
-  const wallet=state.wallet,claimed=wallet.earned.includes('daily:'+rewardDay()),invited=wallet.earned.includes('invite:demo-friend');
-  return `<div class="screen companion-screen"><header class="companion-header"><button class="button" data-route="profile" aria-label="Back to Profile">←</button><span>YOUR AI SPEAKING PARTNER</span><span class="coin-wallet" aria-label="${wallet.coins} demo coins">🪙 ${wallet.coins}</span></header><h1 tabindex="-1">A little more <em>you.</em></h1><p class="companion-intro">Meet ${partnerName(wallet)}. Style the partner you’ll speak Armenian with.</p><section class="companion-stage"><span class="companion-stage-label">${partnerName(wallet).toUpperCase()} · YOUR SPEAKING PARTNER</span>${companionArt(wallet)}<span class="companion-stage-caption">The very same character you’ll meet in AI Studio.</span></section><p class="partner-identity">Ani · your teenage speaking companion</p><button class="button partner-meet" data-route="studio">Meet ${partnerName(wallet)} in AI Studio ↗</button><section class="wardrobe-section"><div class="companion-section-heading"><h2>Your little style studio</h2><span>${wallet.owned.length} / ${wardrobeItems.length} owned</span></div><p class="wardrobe-trial">Presentation dressing room · try every look freely. Coins let you collect favorites.</p>${['hair','clothes','accessories'].map(category=>`<h3 class="wardrobe-category">${{hair:'Hair with personality',clothes:'Something cozy to wear',accessories:'The finishing touches'}[category]}</h3><div class="wardrobe-grid">${wardrobeItems.filter(item=>item.category===category).map(item=>{const owned=wallet.owned.includes(item.id),equipped=wallet.equipped.includes(item.id);return `<div class="wardrobe-item"><span aria-hidden="true">${item.symbol}</span><strong>${item.name}</strong><p>${item.description}</p><button class="button ${equipped?'equipped':''}" data-equip-item="${item.id}" aria-pressed="${equipped}">${equipped?'Wearing ✓':'Try it on'}</button>${owned?'<small class="wardrobe-owned">In your collection ✓</small>':`<button class="button wardrobe-buy" data-buy-item="${item.id}" ${wallet.coins<item.price?'disabled':''}>${item.price?'🪙 '+item.price+' · Collect':'Collect free'}</button>`}</div>`}).join('')}</div>`).join('')}</section><section class="coin-earn-section"><h2>Little wins, lovely rewards</h2><div class="coin-earn-row"><span>🗣️</span><div><strong>Complete a lesson</strong><p>30 coins for each different demo lesson.</p></div><button class="button" data-action="companion-lesson">+30 ↗</button></div><div class="coin-earn-row"><span>🌞</span><div><strong>Your daily little challenge</strong><p>Say thank you in Armenian.</p></div><button class="button" data-action="daily-challenge" ${claimed?'disabled':''}>${claimed?'Done ✓':'+20 ↗'}</button></div>${state.dailyChallengeOpen&&!claimed?'<div class="daily-coin-challenge"><strong lang="hy">Շնորհակալություն։</strong><span>Shnorhakalutyun. · Thank you.</span><p>Try the phrase aloud, then mark your practice complete.</p><button class="button" data-action="claim-daily">I practiced · collect 20 coins</button></div>':''}<div class="coin-earn-row"><span>💌</span><div><strong>Bring a friend along</strong><p>50 coins when a new friend joins.</p></div><button class="button" data-action="invite-preview" ${invited?'disabled':''}>${invited?'Done ✓':'+50 ↗'}</button></div>${state.inviteOpen&&!invited?'<div class="daily-coin-challenge"><strong>Your invitation preview</strong><span>BAREV-FRIEND · sample code</span><p>Try the reward flow without sending an invitation.</p><button class="button" data-action="claim-invite">Simulate a friend joining · +50</button></div>':''}<p class="coin-demo-disclosure">Presentation economy · lessons are self-marked, daily rewards are once per day, and invitations are simulated. No real referrals or payments.</p></section>${wallet.history.length?`<section class="coin-history"><h2>Your little wins</h2>${wallet.history.map(item=>`<div><span>${escape(item.label)}</span><strong class="${item.amount<0?'spent':''}">${item.amount>0?'+':''}${item.amount} 🪙</strong></div>`).join('')}</section>`:''}<p class="companion-local-note">Coins and outfits save on this device.</p></div>`;
+ const wallet=state.wallet;
+ return `<div class="screen companion-screen"><header class="companion-header"><button class="button" data-route="profile" aria-label="Back to Profile">←</button><span>YOUR SPEAKING COMPANION</span><span class="coin-wallet">🪙 ${wallet.coins}</span></header><h1 tabindex="-1">A little more <em>you.</em></h1><p class="companion-intro">Meet ${partnerName(wallet)}. A little practice, a lovely new look.</p><section class="companion-stage"><span class="companion-stage-label">${partnerName(wallet).toUpperCase()} · YOUR COMPANION</span>${companionArt(wallet)}<span class="companion-stage-caption">The partner you’ll meet in every conversation.</span></section><button class="button partner-meet" data-route="quests">Find a conversation on the map ↗</button><section class="wardrobe-section"><div class="companion-section-heading"><h2>Your style studio</h2><span>${wallet.owned.length} / ${wardrobeItems.length} unlocked</span></div><p class="wardrobe-trial">Cream outfit and soft waves are yours. Earn coins on the map to unlock more.</p>${['hair','clothes','accessories'].map(category=>`<h3 class="wardrobe-category">${{hair:'Hair',clothes:'Clothes',accessories:'Accessories'}[category]}</h3><div class="wardrobe-grid">${wardrobeItems.filter(i=>i.category===category).map(item=>{const owned=wallet.owned.includes(item.id),equipped=wallet.equipped.includes(item.id);return `<div class="wardrobe-item ${owned?'available':'locked'}"><span aria-hidden="true">${item.symbol}</span><strong>${item.name}</strong><span class="wardrobe-status">${owned?'UNLOCKED':'🔒 LOCKED'}</span>${owned?`<button class="button ${equipped?'equipped':''}" data-equip-item="${item.id}" aria-pressed="${equipped}">${equipped?'Wearing ✓':'Wear it'}</button>`:`<button class="button wardrobe-buy" data-buy-item="${item.id}" ${wallet.coins<item.price?'disabled':''}>🪙 ${item.price} · Unlock</button><small>${wallet.coins<item.price?`${item.price-wallet.coins} more coins`:'Ready to unlock'}</small>`}</div>`}).join('')}</div>`).join('')}</section><button class="button update-primary" data-route="rewards">Daily challenges & bonuses ↗</button><p class="companion-local-note">Coins and outfits save on this device.<br>Accessories begin off when you reopen the app.</p></div>`;
 }
